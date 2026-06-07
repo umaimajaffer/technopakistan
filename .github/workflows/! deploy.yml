@@ -1,0 +1,86 @@
+name: TechPakistan CD Pipeline
+
+on:
+push:
+branches: [ main ]
+
+jobs:
+
+# ─── JOB 1: CI Tests ─────────────────────────────────
+
+test:
+name: CI Tests
+runs-on: windows-latest
+
+```
+steps:
+  - uses: actions/checkout@v4
+
+  - name: Files check karo
+    shell: pwsh
+    run: |
+      if (!(Test-Path "index.html")) {
+        Write-Error "index.html not found"
+        exit 1
+      }
+
+      Write-Host "✅ CI checks passed"
+```
+
+# ─── JOB 2: Deploy ───────────────────────────────────
+
+deploy:
+name: Server par Deploy
+runs-on: windows-latest
+needs: test
+
+```
+steps:
+  - name: Checkout code
+    uses: actions/checkout@v4
+
+  - name: SSH Key setup
+    shell: pwsh
+    run: |
+      New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh"
+
+      @"
+```
+
+${{ secrets.DEPLOY_KEY }}
+"@ | Out-File "$env:USERPROFILE.ssh\deploy_key" -Encoding ascii
+
+```
+      ssh-keyscan ${{ secrets.SERVER_HOST }} |
+      Out-File "$env:USERPROFILE\.ssh\known_hosts" -Append -Encoding ascii
+
+  - name: Files deploy karo
+    shell: pwsh
+    run: |
+      scp -i "$env:USERPROFILE\.ssh\deploy_key" -r `
+        index.html `
+        src `
+        README.md `
+        ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.DEPLOY_PATH }}/
+
+  - name: Apache restart karo
+    shell: pwsh
+    run: |
+      ssh -i "$env:USERPROFILE\.ssh\deploy_key" `
+        ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} `
+        "sudo systemctl restart apache2 && echo 'Apache restarted'"
+
+  - name: Website health check
+    shell: pwsh
+    run: |
+      Start-Sleep -Seconds 5
+
+      try {
+        Invoke-WebRequest -Uri "http://${{ secrets.SERVER_HOST }}" -UseBasicParsing
+        Write-Host "✅ Website live!"
+      }
+      catch {
+        Write-Error "❌ Website health check failed"
+        exit 1
+      }
+```

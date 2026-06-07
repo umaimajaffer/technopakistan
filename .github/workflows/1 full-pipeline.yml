@@ -1,0 +1,104 @@
+name: TechPakistan Full CI/CD Pipeline
+
+on:
+push:
+branches: [ main, staging, develop ]
+pull_request:
+branches: [ main, staging ]
+
+jobs:
+
+# ─── CI: Sab branches par chalega ────────────────────
+
+ci:
+name: CI Tests
+runs-on: windows-latest
+
+```
+steps:
+  - uses: actions/checkout@v4
+
+  - name: HTML Check
+    shell: pwsh
+    run: |
+      if (!(Test-Path "index.html")) {
+        Write-Error "index.html not found"
+        exit 1
+      }
+
+      Write-Host "✅ HTML file exists"
+
+  - name: File structure check
+    shell: pwsh
+    run: |
+      if (!(Test-Path "src/css/style.css")) {
+        Write-Error "style.css not found"
+        exit 1
+      }
+
+      if (!(Test-Path "src/js/main.js")) {
+        Write-Error "main.js not found"
+        exit 1
+      }
+
+      Write-Host "✅ All files present"
+```
+
+# ─── Deploy to Staging ───────────────────────────────
+
+deploy-staging:
+name: Staging Deploy
+runs-on: windows-latest
+needs: ci
+if: github.ref == 'refs/heads/staging'
+
+```
+steps:
+  - uses: actions/checkout@v4
+
+  - name: Staging par deploy
+    shell: pwsh
+    run: |
+      Write-Host "🔄 Deploying to STAGING server..."
+```
+
+# ─── Deploy to Production ────────────────────────────
+
+deploy-production:
+name: Production Deploy
+runs-on: windows-latest
+needs: ci
+if: github.ref == 'refs/heads/main'
+
+```
+steps:
+  - uses: actions/checkout@v4
+
+  - name: SSH Key setup
+    shell: pwsh
+    run: |
+      New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh"
+
+      @"
+```
+
+${{ secrets.DEPLOY_KEY }}
+"@ | Out-File "$env:USERPROFILE.ssh\deploy_key" -Encoding ascii
+
+```
+  - name: Add server to known_hosts
+    shell: pwsh
+    run: |
+      ssh-keyscan ${{ secrets.SERVER_HOST }} |
+      Out-File "$env:USERPROFILE\.ssh\known_hosts" -Append -Encoding ascii
+
+  - name: Production par deploy
+    shell: pwsh
+    run: |
+      scp -i "$env:USERPROFILE\.ssh\deploy_key" -r `
+        index.html `
+        src `
+        ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_NAME }}:${{ secrets.DEPLOY_PATH }}/
+
+      Write-Host "✅ PRODUCTION deployed!"
+```
