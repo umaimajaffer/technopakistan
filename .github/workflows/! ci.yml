@@ -1,0 +1,100 @@
+name: TechPakistan CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ─── JOB 1: HTML Validation ───────────────────────────
+  validate-html:
+    name: HTML Validate karo
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: HTML Validator install
+        run: npm install -g html-validate
+
+      - name: HTML files validate karo
+        run: html-validate index.html
+
+  # ─── JOB 2: File Structure Check ──────────────────────
+  check-structure:
+    name: File Structure check karo
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Required files check karo
+        shell: pwsh
+        run: |
+          Write-Host "Checking required files..."
+
+          if (Test-Path "index.html") {
+            Write-Host "✅ index.html exists"
+          } else {
+            Write-Error "❌ index.html missing"
+            exit 1
+          }
+
+          if (Test-Path "src/css/style.css") {
+            Write-Host "✅ style.css exists"
+          } else {
+            Write-Error "❌ style.css missing"
+            exit 1
+          }
+
+          if (Test-Path "src/js/main.js") {
+            Write-Host "✅ main.js exists"
+          } else {
+            Write-Error "❌ main.js missing"
+            exit 1
+          }
+
+          if (Test-Path "README.md") {
+            Write-Host "✅ README.md exists"
+          } else {
+            Write-Error "❌ README.md missing"
+            exit 1
+          }
+
+          Write-Host "All files present!"
+
+  # ─── JOB 3: Link Check ────────────────────────────────
+  check-links:
+    name: Links check karo
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: CSS and JS link check
+        shell: pwsh
+        run: |
+          $content = Get-Content index.html -Raw
+
+          if ($content -match "style.css") {
+            Write-Host "✅ CSS linked"
+          } else {
+            Write-Error "❌ CSS link missing"
+            exit 1
+          }
+
+          if ($content -match "main.js") {
+            Write-Host "✅ JS linked"
+          } else {
+            Write-Error "❌ JS link missing"
+            exit 1
+          }
