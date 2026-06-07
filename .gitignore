@@ -1,0 +1,6 @@
+# logs
+*.logslogs/
+# OS files
+*DS_store
+Thumbs.db
+# Editor files
